@@ -242,8 +242,14 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       }
 
       var scrollPos = 0;
-      function lockBody() { scrollPos = window.scrollY; document.body.classList.add('no-scroll'); }
-      function unlockBody() { document.body.classList.remove('no-scroll'); }
+      function lockBody() {
+        scrollPos = window.scrollY;
+        document.body.classList.add('no-scroll');
+      }
+      function unlockBody() {
+        document.body.classList.remove('no-scroll');
+        window.scrollTo({ top: scrollPos, behavior: 'auto' });
+      }
       document.addEventListener('touchmove', function(e) {
         if (document.body.classList.contains('no-scroll') && !e.target.closest('.modal-overlay')) e.preventDefault();
       }, { passive: false });
@@ -519,8 +525,6 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       function esAdmin() { return usuarioActual && (usuarioActual.rol === 'admin' || usuarioActual.rol === 'director' || usuarioActual.rol === 'subdirector'); }
       function esDocente() { return usuarioActual && (usuarioActual.rol === 'docente' || esAdmin()); }
       function esEstudiante() { return usuarioActual && usuarioActual.rol === 'estudiante'; }
-      function esPadres() { return usuarioActual && usuarioActual.rol === 'padres'; }
-
       function actualizarPermisosUI() {
         var esDocenteOrAdmin = esDocente() || esAdmin();
         var esCoord = usuarioActual && usuarioActual.rol === 'coordinador';
@@ -570,7 +574,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
         var filtrados = g === 'todos' ? pickerStudents : pickerStudents.filter(function (s) { return s.grupo === g; });
         var el = $('picker-list');
         if (filtrados.length === 0) { el.innerHTML = emptyMsg('No hay estudiantes en este grupo.', { icon: '🎲', title: 'Picker' }); return; }
-        el.innerHTML = '<div style="display:flex;flex-direction:column;gap:.4rem;">' + filtrados.map(function (s, i) {
+        el.innerHTML = '<div style="display:flex;flex-direction:column;gap:.4rem;">' + filtrados.map(function (s) {
           return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem .6rem;background:var(--gray-50);border-radius:6px;">' +
             '<span>' + escapeHtml(s.nombre) + ' <span class="semestre-badge">' + s.grupo + '</span></span>' +
             '<button class="btn btn-sm picker-del" data-idx="' + pickerStudents.indexOf(s) + '" style="background:var(--red);color:#fff;padding:.15rem .4rem;font-size:.7rem;">×</button></div>';
@@ -732,6 +736,10 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
         { user: 'lfernandez', nombre: 'Luis Fernández', email: 'luis@bachillerato.edu', rol: 'estudiante', semestre: '3', activo: false },
         { user: 'profgarcia', nombre: 'Prof. Roberto García', email: 'rgarcia@bachillerato.edu', rol: 'docente', semestre: '', activo: true },
         { user: 'coordlopez', nombre: 'Mtra. Elena López', email: 'elopez@bachillerato.edu', rol: 'coordinador', semestre: '', activo: true },
+        // Base de datos compartida con la app móvil (cherrybomb_usuarios)
+        { user: 'admin', nombre: 'Administrador', email: 'admin@bachillerato.edu', rol: 'director', semestre: '', activo: true },
+        { user: 'docente1', nombre: 'Docente Demo', email: 'docente1@bachillerato.edu', rol: 'docente', semestre: '', activo: true },
+        { user: 'alumno1', nombre: 'Alumno Demo', email: 'alumno1@bachillerato.edu', rol: 'estudiante', semestre: '1', activo: true },
       ];
 
       function renderAuth() {
@@ -750,7 +758,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
         if (items.length === 0) { tbody.innerHTML = ''; empty.classList.remove('hidden'); total.innerHTML = '0 usuarios'; return; }
         empty.classList.add('hidden');
         var rolesBadge = { director: 'badge-red', coordinador: 'badge-orange', docente: 'badge-blue', estudiante: 'badge-green', padre: 'badge-amber' };
-        tbody.innerHTML = items.map(function (u, i) {
+        tbody.innerHTML = items.map(function (u) {
           var idx = usuarios.indexOf(u);
           return '<tr>' +
             '<th scope="row">' + escapeHtml(u.user) + '</th>' +
@@ -1017,7 +1025,6 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       /* ===== PLAN DE TRABAJO (Planilla de calificaciones) ===== */
       var PLAN_KEY = 'bachillerato_plan_trabajo';
       var planData = JSON.parse(localStorage.getItem(PLAN_KEY) || '[]');
-      var planMaterias = ['Matemáticas', 'Física', 'Química', 'Biología', 'Literatura', 'Historia', 'Inglés'];
       var planEstudiantesPorGrupo = {
         '1A': ['Ana García López','Carlos Mendoza Ruiz','Sofía Ramírez Cruz','Jorge Luis Hernández','Diana Rivas Mora'],
         '1B': ['María Torres Silva','Valentina Ortiz Mora','Pedro Sánchez Vega','Gabriela Flores Ruiz'],
@@ -1146,6 +1153,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
           planRenderGrid();
         });
       }
+      initPlanTab();
 
       function examCargarSelect() {
         var sel = $('exam-select');
@@ -1691,7 +1699,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
           total.textContent = '0 aulas'; return;
         }
         container.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.75rem;">' +
-          items.map(function (a, i) {
+          items.map(function (a) {
             var realIdx = aulas.indexOf(a);
             var icono = tipoIconos[a.tipo] || '\uD83C\uDFEB';
             var color = tipoColores[a.tipo] || 'blue';
@@ -1918,9 +1926,6 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       var asistenciaHistorial = JSON.parse(localStorage.getItem('asistencia_historial') || '[]');
       function estudiantesGuardar() { localStorage.setItem('estudiantes_db', JSON.stringify(ESTUDIANTES_DB)); }
       function asistenciaGuardar() { localStorage.setItem('asistencia_historial', JSON.stringify(asistenciaHistorial)); }
-
-      var estPresentes = 0;
-      var estAusentes = 0;
 
       function estRenderTabla() {
         var anio = parseInt($('est-filtro-anio').value, 10);
@@ -2234,11 +2239,9 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       }
 
       var editandoIdx = -1;
-      var editandoDia = '';
 
       function abrirEditarCelda(idx, dia) {
         editandoIdx = idx;
-        editandoDia = dia;
         var row = horarioItems[idx];
         $('he-hora').value = row.hora || '';
         $('he-lunes').value = row.Lunes || '';
@@ -2254,7 +2257,6 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       function cerrarPanelHorario() {
         $('horario-edit-panel').classList.add('hidden');
         editandoIdx = -1;
-        editandoDia = '';
         $('he-hora').value = '';
         $('he-lunes').value = '';
         $('he-martes').value = '';
@@ -3032,7 +3034,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
           return;
         }
         el.innerHTML = '<div style="display:flex;flex-direction:column;gap:.5rem;">' +
-          items.map(function (p, i) {
+          items.map(function (p) {
             var realIdx = planificaciones.indexOf(p);
             var materiaLabel = { matematicas:'Matemáticas', fisica:'Física', quimica:'Química', biologia:'Biología', literatura:'Literatura', historia:'Historia', ingles:'Inglés' }[p.materia] || p.materia;
             return '<div style="border:1px solid var(--gray-200);border-radius:10px;padding:.75rem;background:var(--gray-50);">' +
