@@ -41,8 +41,8 @@
     if (!isSupported() || Notification.permission !== 'granted') return;
     var opts = {
       body: body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-72.png',
+      icon: '/proyecto_web/icons/icon-192.png',
+      badge: '/proyecto_web/icons/icon-72.png',
       silent: false,
       tag: tag || 'cherrybomb-' + Date.now()
     };

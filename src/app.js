@@ -8,7 +8,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       var savedSession = (function(){try{var s=localStorage.getItem('cherrybombSession');return s?JSON.parse(s):null}catch(e){return null}})();
       var logueado = !!savedSession;
       var usuarioActual = savedSession;
-      var apps = ['inicio','actividades','examenes','foros','agenda','calendario','horario','clases','mensajes','grupales','protegido','tareas','aulas','planificacion','matricula','estudio','configuracion'];
+      var apps = ['inicio','actividades','examenes','foros','agenda','calendario','horario','clases','mensajes','grupales','protegido','tareas','aulas','planificacion','matricula','estudio','sakura-player','configuracion'];
       var appsProtegidas = ['actividades','examenes','foros','agenda','calendario','horario','clases','mensajes','grupales','protegido','tareas','aulas','planificacion','matricula','estudio'];
       function $(id) { return document.getElementById(id); }
 
@@ -150,7 +150,27 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       /* ===================================================================
          THEME — Cambio de tema claro/oscuro/pastel
          =================================================================== */
-      var themeOrder = ['light', 'dark', 'pastel', 'sunset', 'dawn', 'ocean', 'mlp', 'chicawa', 'sakura', 'paraiso'];
+      var themeOrder = ['light', 'dark', 'pastel', 'sunset', 'dawn', 'ocean', 'mlp', 'chicawa', 'sakura', 'paraiso', 'frutiger', 'dreamcore', 'sakura-player'];
+
+      /* Música de fondo por tema: id del <audio> que suena en segundo plano */
+      var THEME_MUSIC = { sakura: 'sakura-audio', frutiger: 'frutiger-audio', dreamcore: 'dreamcore-audio', paraiso: 'paraiso-audio', mlp: 'mlp-audio' };
+
+      function themeAudio(theme) {
+        var id = THEME_MUSIC[theme];
+        return id ? document.getElementById(id) : null;
+      }
+
+      function themeAudios() {
+        var list = [];
+        for (var k in THEME_MUSIC) {
+          if (Object.prototype.hasOwnProperty.call(THEME_MUSIC, k)) {
+            var el = document.getElementById(THEME_MUSIC[k]);
+            if (el) list.push(el);
+          }
+        }
+        return list;
+      }
+
       var currentTheme = localStorage.getItem('cherrybombTheme') || 'light';
 
       /* Asegurar que el valor guardado sea válido */
@@ -161,29 +181,31 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('cherrybombTheme', theme);
 
-        var sakuraAudio = document.getElementById('sakura-audio');
-        if (sakuraAudio) {
-          var vol = parseFloat(localStorage.getItem('cherrybombVol') || '0.5');
-          sakuraAudio.volume = vol;
-          if (theme === 'sakura' && vol > 0) {
-            sakuraAudio.play().catch(function () {});
-          } else {
-            sakuraAudio.pause();
-            sakuraAudio.currentTime = 0;
+        var vol = parseFloat(localStorage.getItem('cherrybombVol') || '0.5');
+        var activa = themeAudio(theme);
+        var audios = themeAudios();
+        for (var a = 0; a < audios.length; a++) {
+          var el = audios[a];
+          el.volume = vol;
+          if (el === activa) {
+            if (vol > 0) el.play().catch(function () {});
+          } else if (!el.paused) {
+            el.pause();
+            try { el.currentTime = 0; } catch (err) { /* sin seek si aún no cargó */ }
           }
         }
         var volCtrl = $('vol-control');
         if (volCtrl) {
-          if (theme === 'sakura') volCtrl.classList.remove('hidden');
+          if (activa) volCtrl.classList.remove('hidden');
           else volCtrl.classList.add('hidden');
         }
 
-        var themeIcons = { light:'sun', dark:'moon', pastel:'flower', sunset:'sunset', dawn:'sun-high', ocean:'droplet', mlp:'star', chicawa:'question', sakura:'flower', paraiso:'sun' };
+        var themeIcons = { light:'sun', dark:'moon', pastel:'flower', sunset:'sunset', dawn:'sun-high', ocean:'droplet', mlp:'star', chicawa:'help-circle', sakura:'flower', paraiso:'sun', frutiger:'droplet', dreamcore:'star' };
         var iconFile = themeIcons[theme] || 'moon';
         var btns = document.querySelectorAll('.btn-theme-toggle');
         for (var i = 0; i < btns.length; i++) btns[i].innerHTML = '<img src="' + iconSrc(iconFile) + '" style="width:18px;height:18px;display:block" alt="Tema">';
         var meta = document.querySelector('meta[name="theme-color"]');
-        var metaColor = theme === 'dark' ? '#0f172a' : theme === 'pastel' ? '#f0d9e8' : theme === 'sunset' ? '#2a1810' : theme === 'dawn' ? '#faf0d0' : theme === 'ocean' ? '#d0e8f0' : theme === 'mlp' ? '#e8d0f0' : theme === 'sakura' ? '#160C1E' : theme === 'paraiso' ? '#0d0b14' : '#2563eb';
+        var metaColor = theme === 'dark' ? '#0f172a' : theme === 'pastel' ? '#f0d9e8' : theme === 'sunset' ? '#2a1810' : theme === 'dawn' ? '#faf0d0' : theme === 'ocean' ? '#d0e8f0' : theme === 'mlp' ? '#e8d0f0' : theme === 'sakura' ? '#160C1E' : theme === 'paraiso' ? '#0d0b14' : theme === 'frutiger' ? '#eaf7ff' : theme === 'dreamcore' ? '#eeecfb' : theme === 'sakura-player' ? '#10051A' : '#2563eb';
         if (meta) meta.content = metaColor;
         // Marcar tarjeta activa en el modal y en la sección
         var cards = document.querySelectorAll('#theme-options .theme-card, #theme-options-section .theme-card');
@@ -199,11 +221,11 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       var volSlider = $('vol-slider');
       var volControl = $('vol-control');
       var btnVol = $('btn-vol');
-      var sakuraAudio = document.getElementById('sakura-audio');
 
       function volSet(vol, save) {
         var v = Math.max(0, Math.min(1, parseFloat(vol) || 0));
-        if (sakuraAudio) sakuraAudio.volume = v;
+        var audios = themeAudios();
+        for (var a = 0; a < audios.length; a++) audios[a].volume = v;
         if (volSlider) volSlider.value = Math.round(v * 100);
         if (v === 0) {
           if (btnVol) btnVol.classList.add('muted');
@@ -222,12 +244,15 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       if (volSlider) {
         volSlider.addEventListener('input', function () {
           var v = parseFloat(this.value) / 100;
-          if (sakuraAudio) sakuraAudio.volume = v;
           volSet(v, true);
-          if (v === 0) {
-            sakuraAudio && sakuraAudio.pause();
-          } else if (currentTheme === 'sakura') {
-            sakuraAudio && sakuraAudio.play().catch(function () {});
+          var audios = themeAudios();
+          var activa = themeAudio(currentTheme);
+          for (var a = 0; a < audios.length; a++) {
+            if (v === 0) {
+              audios[a].pause();
+            } else if (audios[a] === activa) {
+              audios[a].play().catch(function () {});
+            }
           }
         });
       }
@@ -237,19 +262,13 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       var savedVol = localStorage.getItem('cherrybombVol');
       volSet(savedVol === null ? 0.5 : savedVol, false);
       if (volControl) {
-        if (currentTheme === 'sakura') volControl.classList.remove('hidden');
+        if (themeAudio(currentTheme)) volControl.classList.remove('hidden');
         else volControl.classList.add('hidden');
       }
 
       var scrollPos = 0;
-      function lockBody() {
-        scrollPos = window.scrollY;
-        document.body.classList.add('no-scroll');
-      }
-      function unlockBody() {
-        document.body.classList.remove('no-scroll');
-        window.scrollTo({ top: scrollPos, behavior: 'auto' });
-      }
+      function lockBody() { scrollPos = window.scrollY; document.body.classList.add('no-scroll'); }
+      function unlockBody() { document.body.classList.remove('no-scroll'); }
       document.addEventListener('touchmove', function(e) {
         if (document.body.classList.contains('no-scroll') && !e.target.closest('.modal-overlay')) e.preventDefault();
       }, { passive: false });
@@ -279,7 +298,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       function seleccionarTema(theme) {
         aplicarTheme(theme);
         cerrarTemas();
-        var nombres = { light:'claro', dark:'oscuro', pastel:'pastel', sunset:'atardecer', dawn:'amanecer', ocean:'océano', mlp:'My Little Pony', chicawa:'Chicawa', sakura:'Sakura', paraiso:'Paraíso' };
+        var nombres = { light:'claro', dark:'oscuro', pastel:'pastel', sunset:'atardecer', dawn:'amanecer', ocean:'océano', mlp:'My Little Pony', chicawa:'Chicawa', sakura:'Sakura', paraiso:'Paraíso', frutiger:'Frutiger Aero', dreamcore:'Dreamcore', 'sakura-player':'Sakura Player' };
         mostrarToast('Tema cambiado a ' + (nombres[theme] || theme) + ' 🌸', 'success');
       }
       window.seleccionarTema = seleccionarTema;
@@ -314,7 +333,8 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
         { id:'aulas', icon:'building-community', label:'Aulas Virtuales', desc:'Espacios de clase', color:'var(--purple)' },
         { id:'planificacion', icon:'clipboard-data', label:'Planificación', desc:'Jornalización docente', color:'#A78BFA' },
         { id:'matricula', icon:'user-plus', label:'Matrícula', desc:'Inscripciones en línea', color:'var(--teal)' },
-        { id:'estudio', icon:'timer', label:'Estudio', desc:'Técnica Pomodoro', color:'var(--amber)' },
+        { id:'estudio', icon:'clock', label:'Estudio', desc:'Técnica Pomodoro', color:'var(--amber)' },
+        { id:'sakura-player', icon:'headphones', label:'Sakura Player', desc:'Música con YouTube Music', color:'#FF4FD8' },
         { id:'configuracion', icon:'settings', label:'Configuración', desc:'Personaliza tu experiencia', color:'#94A3B8' },
       ];
 
@@ -385,6 +405,9 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
             var src = $('theme-options');
             if (src) dest.innerHTML = src.innerHTML;
           }
+        }
+        if (app === 'sakura-player' && window.mountSakuraPlayer) {
+          window.mountSakuraPlayer();
         }
       };
 
@@ -525,6 +548,8 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       function esAdmin() { return usuarioActual && (usuarioActual.rol === 'admin' || usuarioActual.rol === 'director' || usuarioActual.rol === 'subdirector'); }
       function esDocente() { return usuarioActual && (usuarioActual.rol === 'docente' || esAdmin()); }
       function esEstudiante() { return usuarioActual && usuarioActual.rol === 'estudiante'; }
+      function esPadres() { return usuarioActual && usuarioActual.rol === 'padres'; }
+
       function actualizarPermisosUI() {
         var esDocenteOrAdmin = esDocente() || esAdmin();
         var esCoord = usuarioActual && usuarioActual.rol === 'coordinador';
@@ -574,7 +599,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
         var filtrados = g === 'todos' ? pickerStudents : pickerStudents.filter(function (s) { return s.grupo === g; });
         var el = $('picker-list');
         if (filtrados.length === 0) { el.innerHTML = emptyMsg('No hay estudiantes en este grupo.', { icon: '🎲', title: 'Picker' }); return; }
-        el.innerHTML = '<div style="display:flex;flex-direction:column;gap:.4rem;">' + filtrados.map(function (s) {
+        el.innerHTML = '<div style="display:flex;flex-direction:column;gap:.4rem;">' + filtrados.map(function (s, i) {
           return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem .6rem;background:var(--gray-50);border-radius:6px;">' +
             '<span>' + escapeHtml(s.nombre) + ' <span class="semestre-badge">' + s.grupo + '</span></span>' +
             '<button class="btn btn-sm picker-del" data-idx="' + pickerStudents.indexOf(s) + '" style="background:var(--red);color:#fff;padding:.15rem .4rem;font-size:.7rem;">×</button></div>';
@@ -736,10 +761,6 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
         { user: 'lfernandez', nombre: 'Luis Fernández', email: 'luis@bachillerato.edu', rol: 'estudiante', semestre: '3', activo: false },
         { user: 'profgarcia', nombre: 'Prof. Roberto García', email: 'rgarcia@bachillerato.edu', rol: 'docente', semestre: '', activo: true },
         { user: 'coordlopez', nombre: 'Mtra. Elena López', email: 'elopez@bachillerato.edu', rol: 'coordinador', semestre: '', activo: true },
-        // Base de datos compartida con la app móvil (cherrybomb_usuarios)
-        { user: 'admin', nombre: 'Administrador', email: 'admin@bachillerato.edu', rol: 'director', semestre: '', activo: true },
-        { user: 'docente1', nombre: 'Docente Demo', email: 'docente1@bachillerato.edu', rol: 'docente', semestre: '', activo: true },
-        { user: 'alumno1', nombre: 'Alumno Demo', email: 'alumno1@bachillerato.edu', rol: 'estudiante', semestre: '1', activo: true },
       ];
 
       function renderAuth() {
@@ -758,7 +779,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
         if (items.length === 0) { tbody.innerHTML = ''; empty.classList.remove('hidden'); total.innerHTML = '0 usuarios'; return; }
         empty.classList.add('hidden');
         var rolesBadge = { director: 'badge-red', coordinador: 'badge-orange', docente: 'badge-blue', estudiante: 'badge-green', padre: 'badge-amber' };
-        tbody.innerHTML = items.map(function (u) {
+        tbody.innerHTML = items.map(function (u, i) {
           var idx = usuarios.indexOf(u);
           return '<tr>' +
             '<th scope="row">' + escapeHtml(u.user) + '</th>' +
@@ -1025,6 +1046,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       /* ===== PLAN DE TRABAJO (Planilla de calificaciones) ===== */
       var PLAN_KEY = 'bachillerato_plan_trabajo';
       var planData = JSON.parse(localStorage.getItem(PLAN_KEY) || '[]');
+      var planMaterias = ['Matemáticas', 'Física', 'Química', 'Biología', 'Literatura', 'Historia', 'Inglés'];
       var planEstudiantesPorGrupo = {
         '1A': ['Ana García López','Carlos Mendoza Ruiz','Sofía Ramírez Cruz','Jorge Luis Hernández','Diana Rivas Mora'],
         '1B': ['María Torres Silva','Valentina Ortiz Mora','Pedro Sánchez Vega','Gabriela Flores Ruiz'],
@@ -1153,7 +1175,6 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
           planRenderGrid();
         });
       }
-      initPlanTab();
 
       function examCargarSelect() {
         var sel = $('exam-select');
@@ -1699,7 +1720,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
           total.textContent = '0 aulas'; return;
         }
         container.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.75rem;">' +
-          items.map(function (a) {
+          items.map(function (a, i) {
             var realIdx = aulas.indexOf(a);
             var icono = tipoIconos[a.tipo] || '\uD83C\uDFEB';
             var color = tipoColores[a.tipo] || 'blue';
@@ -1927,6 +1948,9 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       function estudiantesGuardar() { localStorage.setItem('estudiantes_db', JSON.stringify(ESTUDIANTES_DB)); }
       function asistenciaGuardar() { localStorage.setItem('asistencia_historial', JSON.stringify(asistenciaHistorial)); }
 
+      var estPresentes = 0;
+      var estAusentes = 0;
+
       function estRenderTabla() {
         var anio = parseInt($('est-filtro-anio').value, 10);
         var esp = $('est-filtro-especialidad').value;
@@ -2099,37 +2123,175 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       });
       renderActividades();
 
-      function renderForos() {
-        var el = $('foro-lista');
-        if (foros.length === 0) { el.innerHTML = emptyMsg('No hay foros activos.', { icon: '💬', title: 'Foros', desc: 'Creá un foro para iniciar una discusión con tu grupo.', actionText: '+ Nuevo foro', actionFn: function() { $('btn-foro-add').click(); } }); return; }
-        el.innerHTML = '<div style="display:flex;flex-direction:column;gap:.5rem;">' +
-          foros.map(function (f, i) {
-            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.5rem .75rem;background:var(--gray-50);border-radius:8px;">' +
-              '<div><strong>' + escapeHtml(f.titulo) + '</strong>' + (f.desc ? '<br><span style="font-size:.82rem;color:var(--gray-500);">' + escapeHtml(f.desc) + '</span>' : '') + '</div>' +
-              '<button class="btn btn-sm seccion-del" data-seccion="foros" data-idx="' + i + '" style="background:var(--red);color:#fff;">\uD83D\uDDD1\uFE0F</button></div>';
-          }).join('') + '</div>';
-        el.querySelectorAll('.seccion-del').forEach(function (btn) {
-          btn.addEventListener('click', function () {
-            foros.splice(parseInt(this.dataset.idx), 1);
-            guardarSeccion('foros', foros);
-            renderForos();
-            mostrarToast('Foro eliminado.', 'success');
+      /* ===== FOROS — Reddit-like, Online (FastAPI) ===== */
+      var FORUM_API = (import.meta.env.VITE_API_URL || (location.hostname && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' ? 'http://' + location.hostname + ':8000' : 'http://127.0.0.1:8000'));
+      var forumState = { subreddit: null, sort: 'hot', postId: null };
+      function forumVoter() {
+        var v = localStorage.getItem('forum_voter');
+        if (!v) { v = 'u' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('forum_voter', v); }
+        return v;
+      }
+      function forumAuthor() {
+        var a = localStorage.getItem('forum_author');
+        if (!a) {
+          var n = prompt('¿Cómo quieres que te vean en el foro?', 'Anónimo');
+          a = (n && n.trim()) || 'Anónimo';
+          localStorage.setItem('forum_author', a);
+        }
+        return a;
+      }
+      function fTime(ts) {
+        var d = Math.floor(Date.now() / 1000 - ts);
+        if (d < 60) return 'ahora';
+        if (d < 3600) return Math.floor(d / 60) + ' min';
+        if (d < 86400) return Math.floor(d / 3600) + ' h';
+        return Math.floor(d / 86400) + ' d';
+      }
+      function fFetch(path, opts) {
+        return fetch(FORUM_API + path, opts).then(function (r) {
+          if (!r.ok) return r.json().then(function (e) { throw new Error(e.detail || r.statusText); }, function () { throw new Error(r.statusText); });
+          return r.json();
+        });
+      }
+      function renderForumSubs() {
+        fFetch('/api/forum/subreddits').then(function (d) {
+          var el = $('forum-subs');
+          el.innerHTML = '<button class="btn btn-sm forum-sub-btn" data-sub="" style="display:block;width:100%;text-align:left;margin-bottom:.25rem;">🌐 Todos</button>' +
+            d.subreddits.map(function (s) {
+              return '<button class="btn btn-sm forum-sub-btn" data-sub="' + escapeHtml(s.name) + '" style="display:block;width:100%;text-align:left;margin-bottom:.25rem;">r/' + escapeHtml(s.name) + ' <span style="color:var(--gray-500);font-size:.75rem;">(' + s.posts + ')</span></button>';
+            }).join('');
+          el.querySelectorAll('.forum-sub-btn').forEach(function (b) {
+            b.addEventListener('click', function () { forumState.subreddit = b.dataset.sub || null; forumState.postId = null; $('forum-post-view').style.display = 'none'; renderForos(); renderForumSubs(); });
+          });
+        }).catch(function () { $('forum-subs').innerHTML = '<span style="color:var(--red);font-size:.85rem;">Backend apagado</span>'; });
+      }
+      function voteBtn(type, id, score) {
+        return '<div style="display:flex;flex-direction:column;align-items:center;min-width:34px;color:var(--gray-500);">' +
+          '<button class="btn btn-sm forum-vote" data-type="' + type + '" data-id="' + id + '" data-v="1" style="padding:0 6px;">▲</button>' +
+          '<strong style="font-size:.9rem;color:var(--gray-700);">' + score + '</strong>' +
+          '<button class="btn btn-sm forum-vote" data-type="' + type + '" data-id="' + id + '" data-v="-1" style="padding:0 6px;">▼</button></div>';
+      }
+      function bindVotes(container) {
+        container.querySelectorAll('.forum-vote').forEach(function (b) {
+          b.addEventListener('click', function (ev) {
+            ev.stopPropagation();
+            fFetch('/api/forum/vote/' + b.dataset.type + '/' + b.dataset.id, {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ voter: forumVoter(), value: parseInt(b.dataset.v) })
+            }).then(function () { if (forumState.postId) openPost(forumState.postId); else renderForos(); }).catch(function (e) { mostrarToast(e.message, 'error'); });
           });
         });
       }
+      function renderForos() {
+        var el = $('foro-lista');
+        var q = '/api/forum/posts?sort=' + forumState.sort;
+        if (forumState.subreddit) q += '&subreddit=' + encodeURIComponent(forumState.subreddit);
+        fFetch(q).then(function (d) {
+          if (!d.posts.length) { el.innerHTML = '<div class="empty-msg">No hay posts todavía. ¡Creá el primero!</div>'; return; }
+          el.innerHTML = d.posts.map(function (p) {
+            return '<div class="forum-post" data-id="' + p.id + '" style="display:flex;gap:.6rem;padding:.6rem .5rem;border-bottom:1px solid var(--gray-100);cursor:pointer;align-items:flex-start;">' +
+              voteBtn('post', p.id, p.score) +
+              '<div style="flex:1;min-width:0;"><div style="font-size:.75rem;color:var(--gray-500);">r/' + escapeHtml(p.subreddit) + ' · ' + escapeHtml(p.author) + ' · hace ' + fTime(p.created_at) + '</div>' +
+              '<strong>' + escapeHtml(p.title) + '</strong>' +
+              (p.body ? '<div style="font-size:.85rem;color:var(--gray-600);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escapeHtml(p.body) + '</div>' : '') +
+              '<div style="font-size:.75rem;color:var(--gray-500);margin-top:.2rem;">💬 ' + p.comments + ' comentarios</div></div></div>';
+          }).join('');
+          el.querySelectorAll('.forum-post').forEach(function (row) {
+            row.addEventListener('click', function () { openPost(row.dataset.id); });
+          });
+          bindVotes(el);
+        }).catch(function () { el.innerHTML = '<div class="empty-msg">⚠️ Backend apagado o sin conexión. Iniciá el servidor de Sakura Player.</div>'; });
+      }
+      function openPost(id) {
+        forumState.postId = id;
+        var view = $('forum-post-view');
+        view.style.display = 'block';
+        view.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        Promise.all([fFetch('/api/forum/posts/' + id), fFetch('/api/forum/posts/' + id + '/comments')]).then(function (res) {
+          var p = res[0], cs = res[1].comments;
+          var byParent = {};
+          cs.forEach(function (c) { (byParent[c.parent_id || 0] = byParent[c.parent_id || 0] || []).push(c); });
+          function renderC(pid, depth) {
+            return (byParent[pid] || []).map(function (c) {
+              return '<div style="margin-left:' + (depth * 18) + 'px;padding:.5rem 0;border-left:2px solid var(--gray-100);padding-left:.6rem;margin-top:.4rem;">' +
+                '<div style="font-size:.75rem;color:var(--gray-500);">' + escapeHtml(c.author) + ' · hace ' + fTime(c.created_at) + ' · ' + c.score + ' pts</div>' +
+                '<div style="margin:.15rem 0;">' + escapeHtml(c.body) + '</div>' +
+                '<button class="btn btn-sm forum-reply" data-cid="' + c.id + '" style="font-size:.72rem;padding:1px 8px;">Responder</button>' +
+                renderC(c.id, depth + 1) + '</div>';
+            }).join('');
+          }
+          view.innerHTML = '<button class="btn btn-sm" id="forum-back">← Volver</button>' +
+            '<div style="display:flex;gap:.6rem;margin-top:.5rem;align-items:flex-start;">' + voteBtn('post', p.id, p.score) +
+            '<div><div style="font-size:.75rem;color:var(--gray-500);">r/' + escapeHtml(p.subreddit) + ' · ' + escapeHtml(p.author) + ' · hace ' + fTime(p.created_at) + '</div>' +
+            '<h3 style="margin:.2rem 0;">' + escapeHtml(p.title) + '</h3>' +
+            '<div>' + escapeHtml(p.body || '') + '</div></div></div>' +
+            '<hr style="margin:.8rem 0;border-color:var(--gray-100);">' +
+            '<form id="forum-comment-form" style="display:flex;flex-direction:column;gap:.4rem;">' +
+            '<textarea id="forum-comment-body" rows="3" placeholder="Escribí un comentario…" required style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:8px;"></textarea>' +
+            '<button class="btn btn-primary btn-sm" style="align-self:flex-end;">Comentar</button></form>' +
+            '<div id="forum-comments" style="margin-top:.8rem;">' + (renderC(0, 0) || '<div class="empty-msg">Sé el primero en comentar.</div>') + '</div>';
+          $('forum-back').addEventListener('click', function () { forumState.postId = null; view.style.display = 'none'; renderForos(); });
+          $('forum-comment-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            var body = $('forum-comment-body').value.trim();
+            if (!body) return;
+            fFetch('/api/forum/posts/' + id + '/comments', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ author: forumAuthor(), body: body })
+            }).then(function () { openPost(id); }).catch(function (e) { mostrarToast(e.message, 'error'); });
+          });
+          view.querySelectorAll('.forum-reply').forEach(function (b) {
+            b.addEventListener('click', function () {
+              var body = prompt('Tu respuesta:');
+              if (!body || !body.trim()) return;
+              fFetch('/api/forum/posts/' + id + '/comments', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ author: forumAuthor(), body: body.trim(), parent_id: parseInt(b.dataset.cid) })
+              }).then(function () { openPost(id); }).catch(function (e) { mostrarToast(e.message, 'error'); });
+            });
+          });
+          bindVotes(view);
+        }).catch(function () { view.innerHTML = '<div class="empty-msg">Error cargando el post.</div>'; });
+      }
       $('btn-foro-add').addEventListener('click', function () {
-        dialogPrompt('T\u00EDtulo del foro:', 'Nuevo foro').then(function (titulo) {
-          if (!titulo) return;
-          dialogPrompt('Descripci\u00F3n (opcional):', 'Descripci\u00F3n').then(function (desc) {
-            foros.push({ titulo: titulo.trim(), desc: (desc || '').trim() });
-            guardarSeccion('foros', foros);
-            renderForos();
-            mostrarToast('Foro creado.', 'success');
+        fFetch('/api/forum/subreddits').then(function (d) {
+          var subs = d.subreddits.map(function (s) { return s.name; });
+          dialogPrompt('¿En qué subforo? (' + subs.join(', ') + '):', 'general').then(function (sub) {
+            if (!sub) return;
+            dialogPrompt('Título del post:', 'Nuevo post').then(function (titulo) {
+              if (!titulo) return;
+              dialogPrompt('Contenido (opcional):', 'Contenido').then(function (body) {
+                fFetch('/api/forum/posts', {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ subreddit: sub.trim() || 'general', author: forumAuthor(), title: titulo.trim(), body: (body || '').trim() })
+                }).then(function () { mostrarToast('Post publicado.', 'success'); renderForos(); renderForumSubs(); }).catch(function (e) { mostrarToast(e.message, 'error'); });
+              });
+            });
           });
         });
       });
+      $('btn-sub-add').addEventListener('click', function () {
+        dialogPrompt('Nombre del subforo:', 'Nuevo subforo').then(function (name) {
+          if (!name) return;
+          dialogPrompt('Descripción (opcional):', 'Descripción').then(function (desc) {
+            fFetch('/api/forum/subreddits', {
+              method: 'POST', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: name.trim(), description: (desc || '').trim() })
+            }).then(function () { mostrarToast('Subforo creado.', 'success'); renderForumSubs(); }).catch(function (e) { mostrarToast(e.message, 'error'); });
+          });
+        });
+      });
+      document.querySelectorAll('.forum-sort-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+          forumState.sort = b.dataset.sort; forumState.postId = null; $('forum-post-view').style.display = 'none'; renderForos();
+        });
+      });
       renderForos();
-
+      renderForumSubs();
+      setInterval(function () {
+        var sec = $('app-foros');
+        if (sec && !sec.classList.contains('hidden')) { if (forumState.postId) openPost(forumState.postId); else renderForos(); }
+      }, 8000);
       function renderAgenda() {
         var el = $('agenda-lista');
         if (agendaItems.length === 0) { el.innerHTML = emptyMsg('Sin eventos para hoy.', { icon: '📅', title: 'Agenda del día', desc: 'Agregá eventos para organizar tu jornada.' }); return; }
@@ -2239,9 +2401,11 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       }
 
       var editandoIdx = -1;
+      var editandoDia = '';
 
       function abrirEditarCelda(idx, dia) {
         editandoIdx = idx;
+        editandoDia = dia;
         var row = horarioItems[idx];
         $('he-hora').value = row.hora || '';
         $('he-lunes').value = row.Lunes || '';
@@ -2257,6 +2421,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
       function cerrarPanelHorario() {
         $('horario-edit-panel').classList.add('hidden');
         editandoIdx = -1;
+        editandoDia = '';
         $('he-hora').value = '';
         $('he-lunes').value = '';
         $('he-martes').value = '';
@@ -3034,7 +3199,7 @@ function iconSrc(name){return ICON_DATA[name]||'icons/'+name+'.svg';}
           return;
         }
         el.innerHTML = '<div style="display:flex;flex-direction:column;gap:.5rem;">' +
-          items.map(function (p) {
+          items.map(function (p, i) {
             var realIdx = planificaciones.indexOf(p);
             var materiaLabel = { matematicas:'Matemáticas', fisica:'Física', quimica:'Química', biologia:'Biología', literatura:'Literatura', historia:'Historia', ingles:'Inglés' }[p.materia] || p.materia;
             return '<div style="border:1px solid var(--gray-200);border-radius:10px;padding:.75rem;background:var(--gray-50);">' +

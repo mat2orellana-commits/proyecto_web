@@ -20,10 +20,13 @@
     "node": "^18.0.0 || >=20.0.0"
   },
   "dependencies": {
+    "@capacitor/android": "^6.2.2",
+    "@capacitor/cli": "^6.2.2",
+    "@capacitor/core": "^6.2.2",
+    "@resvg/resvg-js": "^2.6.2",
     "serve": "^14.2.1"
   },
   "devDependencies": {
-    "@types/node": "^26.6.4",
     "@typescript-eslint/eslint-plugin": "^7.8.0",
     "@typescript-eslint/parser": "^7.8.0",
     "@vitest/ui": "^1.6.0",

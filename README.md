@@ -3,8 +3,187 @@
 Plataforma educativa institucional. App web estática (SPA) con Pomodoro,
 notificaciones, persistencia en `localStorage` y soporte offline vía PWA.
 
-10 temas: `sakura`, `chicawa`, `mlp`, `pastel`, `dark`, `dawn`, `light`,
-`ocean`, `paraiso`, `sunset`.
+13 temas: `sakura`, `chicawa`, `mlp`, `pastel`, `dark`, `dawn`, `light`,
+`ocean`, `paraiso`, `sunset`, `frutiger`, `dreamcore`, `sakura-player`.
+
+`sakura`, `frutiger`, `dreamcore`, `paraiso` y `mlp` además reproducen música
+de fondo en segundo plano (pistas en `public/audio/`, control de volumen en el
+header).
+
+## 🌸 Sakura Player
+
+Reproductor de música integrado: **YouTube Music** (vía backend Python) +
+**archivos locales**, con ecualizador de 10 bandas, mezclador, visualizador,
+vista Reproductor (portada, progreso, shuffle, repeat, favoritos, cola),
+cola, playlists y mini reproductor.
+
+```
+src/sakura-player/
+  sakura-player.js         controlador principal
+  api/client.js            cliente HTTP (debounce, AbortController, caché)
+  player/player.js         motor de audio (cola, shuffle, repeat, seek, favoritos)
+  player/visualizer.js     visualizador de audio adaptativo al tema
+  audio/equalizer.js       10 bandas + presets
+  audio/mixer.js           MASTER / MÚSICA / BAJOS / AGUDOS / BALANCE
+  library/library.js       biblioteca (canciones, artistas, álbumes, favoritos…)
+  library/local-files.js   MP3/WAV/FLAC/OGG/M4A + metadatos + portada
+  components/              búsqueda, biblioteca, playlists, cola, mezclador,
+                           vista Reproductor, mini reproductor, upload,
+                           utilidades de UI
+  theme/                   tokens de tema + gestor (auto/manual)
+backend/
+  main.py                  FastAPI + CORS + health
+  api/                     search, songs, artists, albums, playlists, library
+  services/ytmusic_service.py   capa de abstracción sobre ytmusicapi
+```
+
+### Arranque del backend
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn main:app --reload        # → http://127.0.0.1:8000
+```
+
+Si tu sistema no trae `pip`, usá [uv](https://astral.sh/uv/) (no lo necesita):
+
+```bash
+cd backend
+uv venv .venv --python python3
+uv pip install -r requirements.txt --python .venv/bin/python
+.venv/bin/python -m uvicorn main:app --reload
+```
+
+Documentación interactiva: `http://127.0.0.1:8000/docs`.
+
+Comprobación rápida:
+
+```bash
+curl http://127.0.0.1:8000/api/health
+# → {"ok":true,...,"ytmusic":{"ok":true,"authenticated":false},...}
+```
+
+### Si ves «Backend apagado o sin conexión»
+
+Es el mensaje **amigable** que muestra el reproductor cuando la petición al
+backend falla. Causas posibles, en orden de probabilidad:
+
+1. **El backend no está corriendo** — arrancalo con `uvicorn main:app --reload`
+   (ver arriba) y recargá la página.
+2. **CORS bloqueando el origen** — el navegador corta la petición si la página
+   se sirve desde un origen no permitido. Por defecto se acepta **cualquier
+   puerto local** (`localhost`/`127.0.0.1`), `https://lemichiw-cyber.github.io`
+   y `https://proyecto-web-2-bygl.onrender.com`; si cambiaste
+   `SAKURA_CORS_ORIGINS` (recordá: **reemplaza** la lista por defecto),
+   asegurate de incluir el origen desde el que servís la app. El backend
+   también responde el preflight de *Private Network Access* que Chrome hace
+   cuando un sitio público pide a un servicio local.
+3. **El backend está en otro puerto o máquina** — la URL base se guarda en
+   `localStorage` con la clave `sakuraPlayerApiBase` (default
+   `http://127.0.0.1:8000`); se puede cambiar desde `Ajustes → Backend`
+   (campo + «Guardar» y «Probar») o con
+   `localStorage.setItem('sakuraPlayerApiBase','http://127.0.0.1:8000')`.
+   **`127.0.0.1` es la propia máquina**: si abrís el sitio desplegado en otro
+   dispositivo (teléfono, otra PC), el backend tiene que correr **en ese
+   dispositivo** o hay que apuntar la URL a donde está el backend.
+
+Verificación: `curl http://127.0.0.1:8000/api/music/search?q=test&filter=songs`
+debe devolver JSON con `"songs":[...]`.
+
+### Streaming (cómo llega el audio)
+
+YouTube entrega los formatos de audio firmados (`signatureCipher`), así que el
+backend usa **yt-dlp** para resolver la URL directa. El navegador no habla con
+YouTube: reproduce desde `GET /api/music/stream/{id}`, un proxy que:
+
+- reenvía las cabeceras **`Range`** → respuestas `206`, con lo que el seek y la
+  precarga del `<audio>` funcionan;
+- añade **CORS**, necesario porque `<audio crossOrigin="anonymous">` debe
+  poder alimentar el grafo Web Audio (EQ, mezclador y visualizador);
+- reenvía el `User-Agent` con el que se extrajo la URL (exigido por Google);
+- cachea la URL 10 minutos (expiran en ~6 h).
+
+Si yt-dlp falla, se intenta con los formatos de ytmusicapi que traen URL
+directa. Verificación:
+
+```bash
+curl -r 0-4095 http://127.0.0.1:8000/api/music/stream/<videoId> -o /dev/null -w "%{http_code}"
+# → 206
+```
+
+### Despliegue multiplataforma (backend en la nube)
+
+Para que el sitio funcione desde **cualquier dispositivo** (teléfono,
+otra PC, Windows/macOS/Linux) sin instalar nada, desplegá también el
+backend:
+
+1. **Crear el servicio en Render**: *New + → Web Service* → este repositorio con
+   - **Root Directory**: `backend`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+     (también está el `backend/Procfile`, que Render detecta solo)
+   - **Health Check Path**: `/api/health`
+2. **Apuntar el frontend a esa URL**: en el servicio del frontend agregá la
+   variable de entorno `VITE_API_URL=https://TU-BACKEND.onrender.com` y
+   redeployá — el build la hornea en `dist/`. Sin esa variable el sitio
+   sigue usando `http://127.0.0.1:8000` (backend local).
+3. **CORS**: el backend acepta por defecto cualquier puerto local,
+   `https://lemichiw-cyber.github.io` y `https://proyecto-web-2-bygl.onrender.com`.
+   Si tu frontend vive en otro nombre, agregá su URL a
+   `SAKURA_CORS_ORIGINS` del servicio backend (⚠️ **reemplaza** la lista
+   completa: incluí también los orígenes locales si los seguís usando).
+
+Notas:
+
+- El backend en la nube corre en **modo invitado** (sin `auth.json`): búsqueda,
+  streaming, artistas, álbumes y playlists públicas. La biblioteca/historial de
+  tu cuenta solo existen con un backend local autenticado — **no subas
+  credenciales a la plataforma**.
+- El plan gratuito se duerme tras unos minutos sin uso: la primera petición
+  tarda ~50 s o falla con el aviso amigable; reintentá.
+- `Ajustes → Backend` permite volver a un backend local en cualquier momento
+  (localStorage `sakuraPlayerApiBase` tiene prioridad sobre `VITE_API_URL`).
+
+### Autenticación de YouTube Music
+
+Sin credenciales, el backend funciona en **modo invitado** (búsqueda, artistas,
+álbumes, playlists públicas y streaming). Para biblioteca, historial y gestión
+de playlists propias, generá un archivo de sesión **fuera del repo**:
+
+```bash
+python -c "from ytmusicapi import YTMusic; YTMusic().setup()"
+# → crea auth.json (está en backend/.gitignore)
+```
+
+Copiá `backend/.env.example` a `backend/.env` y ajustá:
+
+| Variable | Para qué |
+|---|---|
+| `SAKURA_HOST` / `SAKURA_PORT` | Escucha del backend |
+| `SAKURA_CORS_ORIGINS` | Orígenes extra permitidos (default: dev/preview/`github.io`) |
+| `YTMUSIC_AUTH_FILE` | Ruta del archivo de sesión (default: `auth.json`) |
+| `YTMUSIC_ALLOW_ANONYMOUS` | Permitir modo invitado si no hay auth |
+
+**Nunca** commitees `auth.json`, `oauth.json` ni `.env`.
+
+### Temas del reproductor
+
+El reproductor usa tokens CSS (`--player-*`) y **se adapta solo** al tema de la
+app (modo automático), con un look distinto para **cada uno de los 12 temas**
+de la app (si dos temas compartieran paleta, cambiar de tema no se notaría).
+En `Ajustes` del reproductor se puede elegir un tema manual entre 12
+configuraciones: Sakura, Cyberpunk, Neon, Ocean, Forest, Sunset, Midnight,
+Lavender, Crimson, Arctic, Retro y Sakura Dark. Cada una cambia colores, glow,
+bordes, animaciones (intensidad), estilo del visualizador y efectos
+(scanlines, glitch, CRT, HUD, pétalos).
+
+### Offline
+
+El service worker sigue cacheando el app shell. Sin conexión, el reproductor
+muestra un aviso y deshabilita las funciones de YouTube Music; la biblioteca
+local (archivos cargados) sigue disponible.
 
 ---
 
@@ -167,7 +346,12 @@ src/
   notifications.js       notificaciones
   styles.css             temas + tipografía
   assets/                fuente KanjiStyle
-index.html               markup (23 secciones app-*)
+  sakura-player/         reproductor de música (ver arriba)
+backend/
+  main.py                API FastAPI (YouTube Music vía ytmusicapi)
+  api/                   endpoints REST
+  services/              capa de abstracción ytmusicapi
+index.html               markup (24 secciones app-*)
 ```
 
 ## Seguridad
