@@ -46,7 +46,7 @@ _CORS_DEFAULT = ",".join([
 _CORS = [o.strip() for o in os.getenv("SAKURA_CORS_ORIGINS", _CORS_DEFAULT).split(",") if o.strip()]
 
 # Cualquier localhost/puerto local (dev, preview, serve, …)
-_CORS_LOCAL = r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$"
+_CORS_LOCAL = r"^https?://(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?$|^https://[\w-]+\.vercel\.app$|^https://[\w-]+\.trycloudflare\.com$"
 
 app = FastAPI(
     title="Sakura Player API",
